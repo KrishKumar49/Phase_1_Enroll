@@ -1,4 +1,6 @@
 import os
+import tempfile
+import zipfile
 
 import cv2
 import numpy as np
@@ -8,28 +10,105 @@ from insightface.app import FaceAnalysis
 
 face_app = None
 
+MODEL_HOME = os.path.join(os.path.dirname(__file__), "insightface_models")
+MODEL_ROOT = os.path.join(MODEL_HOME, "models")
+MODEL_CANDIDATES = (
+    "buffalo_s",
+    "buffalo_m",
+)
+MODEL_PACK_URLS = {
+    "buffalo_s": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_s.zip",
+    "buffalo_m": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_m.zip",
+}
+
+
+def _model_pack_path(model_name):
+    return os.path.join(MODEL_ROOT, model_name)
+
+
+def _has_model_files(model_name):
+    model_path = _model_pack_path(model_name)
+
+    return os.path.isdir(model_path) and any(
+        file_name.endswith(".onnx")
+        for file_name in os.listdir(model_path)
+    )
+
+
+def _download_model_pack(model_name):
+    url = MODEL_PACK_URLS[model_name]
+    os.makedirs(MODEL_ROOT, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as temp_zip:
+        temp_zip_path = temp_zip.name
+
+    try:
+        response = requests.get(url, stream=True, timeout=120)
+        response.raise_for_status()
+
+        with open(temp_zip_path, "wb") as zip_file:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    zip_file.write(chunk)
+
+        with zipfile.ZipFile(temp_zip_path) as archive:
+            archive.extractall(MODEL_ROOT)
+    finally:
+        if os.path.exists(temp_zip_path):
+            os.remove(temp_zip_path)
+
+
+def _ensure_model_pack(model_name):
+    if _has_model_files(model_name):
+        return
+
+    _download_model_pack(model_name)
+
+    if not _has_model_files(model_name):
+        raise RuntimeError(f"Downloaded InsightFace model pack '{model_name}' is incomplete")
+
 
 def get_face_app():
     global face_app
 
     if face_app is None:
-        face_app = FaceAnalysis(
-            name='buffalo_m',
-            providers=['CPUExecutionProvider']
-        )
-        face_app.prepare(
-            ctx_id=-1,
-            det_size=(320, 320)
-        )
+        last_error = None
+
+        for model_name in MODEL_CANDIDATES:
+            try:
+                _ensure_model_pack(model_name)
+
+                face_app = FaceAnalysis(
+                    name=model_name,
+                    root=MODEL_HOME,
+                    providers=['CPUExecutionProvider']
+                )
+                face_app.prepare(
+                    ctx_id=-1,
+                    det_size=(320, 320)
+                )
+                break
+            except Exception as error:
+                last_error = error
+                face_app = None
+
+        if face_app is None:
+            raise RuntimeError(f"Could not initialize InsightFace models: {last_error}")
 
     return face_app
 
 def enroll_employee(video_url, employee_id):
-    model = get_face_app()
-
     os.makedirs("temp", exist_ok=True)
 
     temp_video_path = f"temp/{employee_id}.mp4"
+
+    try:
+        model = get_face_app()
+    except Exception as error:
+        return {
+            "status": "failed",
+            "message": f"Could not initialize face model: {error}"
+        }
 
     try:
         response = requests.get(video_url, timeout=30)
