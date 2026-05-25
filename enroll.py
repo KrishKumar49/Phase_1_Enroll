@@ -13,10 +13,12 @@ face_app = None
 MODEL_HOME = os.path.join(os.path.dirname(__file__), "insightface_models")
 MODEL_ROOT = os.path.join(MODEL_HOME, "models")
 MODEL_CANDIDATES = (
+    "buffalo_sc",
     "buffalo_s",
     "buffalo_m",
 )
 MODEL_PACK_URLS = {
+    "buffalo_sc": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_sc.zip",
     "buffalo_s": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_s.zip",
     "buffalo_m": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_m.zip",
 }
@@ -100,7 +102,7 @@ def get_face_app():
                 )
                 face_app.prepare(
                     ctx_id=-1,
-                    det_size=(320, 320)
+                    det_size=(224, 224)
                 )
                 break
             except Exception as error:
