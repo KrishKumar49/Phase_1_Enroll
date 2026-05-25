@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from enroll import enroll_employee
@@ -14,6 +14,11 @@ def home():
     return {
         "message": "Enrollment API Running"
     }
+
+
+@app.head("/")
+def home_head():
+    return Response(status_code=200)
 
 @app.post("/enroll")
 def enroll(data: EnrollRequest):

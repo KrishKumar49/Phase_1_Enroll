@@ -58,6 +58,21 @@ def _download_model_pack(model_name):
             os.remove(temp_zip_path)
 
 
+def _download_video(video_url, destination_path):
+    try:
+        response = requests.get(video_url, stream=True, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException:
+        return False
+
+    with open(destination_path, "wb") as video_file:
+        for chunk in response.iter_content(chunk_size=1024 * 1024):
+            if chunk:
+                video_file.write(chunk)
+
+    return True
+
+
 def _ensure_model_pack(model_name):
     if _has_model_files(model_name):
         return
@@ -110,22 +125,11 @@ def enroll_employee(video_url, employee_id):
             "message": f"Could not initialize face model: {error}"
         }
 
-    try:
-        response = requests.get(video_url, timeout=30)
-    except requests.RequestException:
+    if not _download_video(video_url, temp_video_path):
         return {
             "status": "failed",
             "message": "Could not download video"
         }
-
-    if response.status_code != 200:
-        return {
-            "status": "failed",
-            "message": "Could not download video"
-        }
-
-    with open(temp_video_path, "wb") as f:
-        f.write(response.content)
 
     video = None
 
