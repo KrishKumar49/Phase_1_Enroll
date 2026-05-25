@@ -6,17 +6,26 @@ import requests
 
 from insightface.app import FaceAnalysis
 
-app = FaceAnalysis(
-    name='buffalo_l',
-    providers=['CPUExecutionProvider']
-)
+face_app = None
 
-app.prepare(
-    ctx_id=-1,
-    det_size=(640, 640)
-)
+
+def get_face_app():
+    global face_app
+
+    if face_app is None:
+        face_app = FaceAnalysis(
+            name='buffalo_m',
+            providers=['CPUExecutionProvider']
+        )
+        face_app.prepare(
+            ctx_id=-1,
+            det_size=(320, 320)
+        )
+
+    return face_app
 
 def enroll_employee(video_url, employee_id):
+    model = get_face_app()
 
     os.makedirs("temp", exist_ok=True)
 
@@ -84,7 +93,7 @@ def enroll_employee(video_url, employee_id):
             x1, y1, x2, y2 = 0, 0, 0, 0 
 
 
-            faces = app.get(frame)
+            faces = model.get(frame)
 
             if len(faces) > 0:
                 face = max(
