@@ -13,14 +13,12 @@ face_app = None
 MODEL_HOME = os.path.join(os.path.dirname(__file__), "insightface_models")
 MODEL_ROOT = os.path.join(MODEL_HOME, "models")
 MODEL_CANDIDATES = (
-    "buffalo_sc",
-    "buffalo_s",
     "buffalo_m",
+    "buffalo_l",
 )
 MODEL_PACK_URLS = {
-    "buffalo_sc": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_sc.zip",
-    "buffalo_s": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_s.zip",
     "buffalo_m": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_m.zip",
+    "buffalo_l": "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip",
 }
 
 
@@ -54,7 +52,7 @@ def _download_model_pack(model_name):
                     zip_file.write(chunk)
 
         with zipfile.ZipFile(temp_zip_path) as archive:
-            archive.extractall(MODEL_ROOT)
+            archive.extractall(path=MODEL_ROOT)
     finally:
         if os.path.exists(temp_zip_path):
             os.remove(temp_zip_path)
@@ -102,7 +100,7 @@ def get_face_app():
                 )
                 face_app.prepare(
                     ctx_id=-1,
-                    det_size=(224, 224)
+                    det_size=(640, 640)
                 )
                 break
             except Exception as error:
@@ -229,7 +227,6 @@ def enroll_employee(video_url, employee_id):
                         print(f"Frame {frame_count}: Blur Score: {blur_score:.2f}")
 
                         if blur_score < 50:
-                            frame_count += 1
                             continue
 
                         left_eye = face.kps[0]
@@ -271,6 +268,8 @@ def enroll_employee(video_url, employee_id):
             [data[0] for data in collected_face_data],
             axis=0
         )
+
+        final_embedding = final_embedding / np.linalg.norm(final_embedding)
 
         np.save(
             f'embeddings/{employee_id}.npy',
