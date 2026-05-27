@@ -169,8 +169,10 @@ def enroll_employee(video_url, employee_id):
             if not ret:
                 break
 
-            if frame_count % 15 != 0:
-                frame_count += 1
+            current_frame = frame_count
+            frame_count += 1
+
+            if current_frame % 15 != 0:
                 continue
 
             x1, y1, x2, y2 = 0, 0, 0, 0 
@@ -224,7 +226,10 @@ def enroll_employee(video_url, employee_id):
                             cv2.CV_64F
                         ).var()
 
-                        print(f"Frame {frame_count}: Blur Score: {blur_score:.2f}")
+                        print(
+                            f"Frame {current_frame}: Blur Score: {blur_score:.2f}",
+                            flush=True
+                        )
 
                         if blur_score < 50:
                             continue
@@ -250,14 +255,14 @@ def enroll_employee(video_url, employee_id):
                                     break
 
                             if not is_duplicate:
-                                collected_face_data.append((embedding, face_crop, face.det_score, blur_score, eye_ratio, frame_count))
+                                collected_face_data.append((embedding, face.det_score, blur_score, eye_ratio, current_frame))
 
-                                # cv2.imwrite(f"{output_faces_dir}/{frame_count}.jpg", face_crop)
+                                # cv2.imwrite(f"{output_faces_dir}/{current_frame}.jpg", face_crop)
 
-            frame_count += 1
+            
 
 
-        if len(collected_face_data) < 10:
+        if len(collected_face_data) < 5:
             return {
                 "status": "failed",
                 "message": "Not enough quality samples"
