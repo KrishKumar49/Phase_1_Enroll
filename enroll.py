@@ -276,8 +276,17 @@ def enroll_employee(video_url, employee_id):
 
         final_embedding = final_embedding / np.linalg.norm(final_embedding)
 
+        all_embeddings = np.array(
+            [data[0] for data in collected_face_data]
+        )
+
         np.save(
-            f'embeddings/{employee_id}.npy',
+            f'embeddings/{employee_id}_all.npy',
+            all_embeddings
+        )
+
+        np.save(
+            f'embeddings/{employee_id}_mean.npy',
             final_embedding
         )
 
@@ -286,9 +295,20 @@ def enroll_employee(video_url, employee_id):
         return {
             "status": "success",
             "employeeId": employee_id,
-            "embeddingsCount": 1,
-            "savedEmbeddings": f"embeddings/{employee_id}.npy",
-            "embedding": final_embedding.tolist(),
+            "embeddingsCount": len(collected_face_data),
+            
+            "savedEmbeddings": {
+                "mean": f"embeddings/{employee_id}_mean.npy",
+                "all": f"embeddings/{employee_id}_all.npy"
+            }
+            # "savedEmbeddings": f"embeddings/{employee_id}_mean.npy",
+            # "embedding": final_embedding.tolist(),
+            
+            
+            # To also return all individual embeddings used to compute the final
+            # embedding, uncomment the following line. This will include the
+            # raw per-sample embeddings (as lists) in the response.
+            # "all_embeddings": [data[0].tolist() for data in collected_face_data],
         }
 
     except Exception as e:
