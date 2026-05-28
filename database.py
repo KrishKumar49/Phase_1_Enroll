@@ -15,28 +15,52 @@ def get_db_connection():
 
 def save_employee_embedding(
     employee_id,
-    embedding,
+    mean_embedding,
+    all_embeddings,
     embeddings_count
 ):
     conn = get_db_connection()
 
     cursor = conn.cursor()
 
+    mean_embedding_list = mean_embedding.tolist()
+
     cursor.execute(
         """
         INSERT INTO employees (
             employee_id,
-            embedding,
+            mean_embedding,
             embeddings_count
         )
         VALUES (%s, %s, %s)
+        ON CONFLICT (employee_id)
+        DO UPDATE SET
+            mean_embedding = EXCLUDED.mean_embedding,
+            embeddings_count = EXCLUDED.embeddings_count
         """,
         (
             employee_id,
-            embedding.tolist(),
+            mean_embedding_list,
             embeddings_count
         )
     )
+
+    for embedding in all_embeddings:
+        embedding_list = embedding.tolist()
+
+        cursor.execute(
+            """
+            INSERT INTO employee_embeddings (
+                employee_id,
+                embedding
+            )
+            VALUES (%s, %s)
+            """,
+            (
+                employee_id,
+                embedding_list
+            )
+        )
 
     conn.commit()
 

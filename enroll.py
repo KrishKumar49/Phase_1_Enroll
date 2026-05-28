@@ -305,6 +305,7 @@ def enroll_employee(video_url, employee_id):
         save_employee_embedding(
             employee_id,
             final_embedding,
+            all_embeddings,
             len(collected_face_data)
         )
 
@@ -339,3 +340,7 @@ def enroll_employee(video_url, employee_id):
 
         if os.path.exists(temp_video_path):
             os.remove(temp_video_path)
+            
+            
+            
+            
