@@ -1,32 +1,13 @@
 import os
-from importlib import import_module
+
+import psycopg2
 
 
-def _get_psycopg2():
-    try:
-        return import_module("psycopg2")
-    except ModuleNotFoundError as error:
-        raise RuntimeError(
-            "psycopg2 is not installed. Add psycopg2-binary to requirements and redeploy."
-        ) from error
+DATABASE_URL = os.getenv("https://ghcr.io/railwayapp-templates/postgres-ssl")
 
-
-def _get_connection_kwargs():
-    database_url = os.getenv("DATABASE_URL")
-
-    if database_url:
-        return {"dsn": database_url}
-
-    return {
-        "host": os.getenv("DB_HOST", "localhost"),
-        "database": os.getenv("DB_NAME", "vehicle_security"),
-        "user": os.getenv("DB_USER", "postgres"),
-        "password": os.getenv("DB_PASSWORD", "Krish@7042"),
-        "port": os.getenv("DB_PORT", "5432"),
-    }
 
 def get_db_connection():
-    return _get_psycopg2().connect(**_get_connection_kwargs())
+    return psycopg2.connect(DATABASE_URL)
     
     
 def save_employee_embedding(
