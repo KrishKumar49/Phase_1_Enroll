@@ -11,34 +11,34 @@ def get_db_connection():
         raise RuntimeError("DATABASE_URL is not set")
 
     return psycopg2.connect(DATABASE_URL)
-    
-    
+
+
 def save_employee_embedding(
     employee_id,
-    mean_path,
-    all_path,
+    embedding,
     embeddings_count
 ):
     conn = get_db_connection()
-    
+
     cursor = conn.cursor()
+
     cursor.execute(
         """
         INSERT INTO employees (
             employee_id,
-            mean_embedding_path,
-            all_embedding_path,
+            embedding,
             embeddings_count
         )
-        VALUES (%s, %s, %s, %s)
+        VALUES (%s, %s, %s)
         """,
         (
             employee_id,
-            mean_path,
-            all_path,
+            embedding.tolist(),
             embeddings_count
         )
     )
+
     conn.commit()
+
     cursor.close()
     conn.close()

@@ -292,29 +292,34 @@ def enroll_employee(video_url, employee_id):
             final_embedding
         )
         
-        mean_path = f'embeddings/{employee_id}_mean.npy'
-        all_path = f'embeddings/{employee_id}_all.npy'
+        # mean_path = f'embeddings/{employee_id}_mean.npy'
+        # all_path = f'embeddings/{employee_id}_all.npy'
+
+        # save_employee_embedding(
+        #     employee_id,
+        #     mean_path,
+        #     all_path,
+        #     len(collected_face_data)
+        # )
 
         save_employee_embedding(
             employee_id,
-            mean_path,
-            all_path,
+            final_embedding,
             len(collected_face_data)
         )
-
 
 
         return {
             "status": "success",
             "employeeId": employee_id,
             "embeddingsCount": len(collected_face_data),
+            "embeddingStored": True
             
-            "savedEmbeddings": {
-                "mean": f"embeddings/{employee_id}_mean.npy",
-                "all": f"embeddings/{employee_id}_all.npy"
-            }
-            # "savedEmbeddings": f"embeddings/{employee_id}_mean.npy",
-            # "embedding": final_embedding.tolist(),
+            # "savedEmbeddings": {
+            #     "mean": f"embeddings/{employee_id}_mean.npy",
+            #     "all": f"embeddings/{employee_id}_all.npy"
+            # }
+            
             
             
             # To also return all individual embeddings used to compute the final
