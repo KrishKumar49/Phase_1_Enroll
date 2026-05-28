@@ -1,13 +1,32 @@
-import psycopg2
+import os
+from importlib import import_module
+
+
+def _get_psycopg2():
+    try:
+        return import_module("psycopg2")
+    except ModuleNotFoundError as error:
+        raise RuntimeError(
+            "psycopg2 is not installed. Add psycopg2-binary to requirements and redeploy."
+        ) from error
+
+
+def _get_connection_kwargs():
+    database_url = os.getenv("DATABASE_URL")
+
+    if database_url:
+        return {"dsn": database_url}
+
+    return {
+        "host": os.getenv("DB_HOST", "localhost"),
+        "database": os.getenv("DB_NAME", "vehicle_security"),
+        "user": os.getenv("DB_USER", "postgres"),
+        "password": os.getenv("DB_PASSWORD", "Krish@7042"),
+        "port": os.getenv("DB_PORT", "5432"),
+    }
 
 def get_db_connection():
-    return psycopg2.connect(
-        host="localhost",
-        database="vehicle_security",
-        user="postgres",
-        password="Krish@7042",
-        port=5432
-    )
+    return _get_psycopg2().connect(**_get_connection_kwargs())
     
     
 def save_employee_embedding(
