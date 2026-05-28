@@ -8,6 +8,8 @@ import requests
 
 from insightface.app import FaceAnalysis
 
+from database import save_employee_embedding
+
 face_app = None
 
 MODEL_HOME = os.path.join(os.path.dirname(__file__), "insightface_models")
@@ -288,6 +290,16 @@ def enroll_employee(video_url, employee_id):
         np.save(
             f'embeddings/{employee_id}_mean.npy',
             final_embedding
+        )
+        
+        mean_path = f'embeddings/{employee_id}_mean.npy'
+        all_path = f'embeddings/{employee_id}_all.npy'
+
+        save_employee_embedding(
+            employee_id,
+            mean_path,
+            all_path,
+            len(collected_face_data)
         )
 
 
