@@ -2,6 +2,7 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from enroll import enroll_employee
+from recognize import recognize_employee
 
 app = FastAPI()
 
@@ -29,3 +30,9 @@ def enroll(data: EnrollRequest):
     )
 
     return result
+
+@app.post("/recognize")
+def recognize(
+    image_url: str
+):
+    return recognize_employee(image_url)

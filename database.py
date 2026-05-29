@@ -66,3 +66,25 @@ def save_employee_embedding(
 
     cursor.close()
     conn.close()
+    
+    
+def get_all_employee_embeddings():
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            employee_id,
+            embedding
+        FROM employee_embeddings
+        """
+    )
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return rows
