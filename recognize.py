@@ -11,114 +11,89 @@ from database import get_all_employee_embeddings
 
 MATCH_THRESHOLD = 0.50
 
-
-def _download_image(image_url, destination_path):
-    try:
-        response = requests.get(
-            image_url,
-            stream=True,
-            timeout=30
-        )
-
-        response.raise_for_status()
-
-    except requests.RequestException:
-        return False
-
-    with open(destination_path, "wb") as image_file:
-        for chunk in response.iter_content(
-            chunk_size=1024 * 1024
-        ):
-            if chunk:
-                image_file.write(chunk)
-
-    return True
+FRAME_SKIP = 5
 
 
-def recognize_employee(image_url):
-    os.makedirs("temp", exist_ok=True)
-
-    temp_image_path = tempfile.mktemp(
-        suffix=".jpg",
-        dir="temp"
-    )
-
-    try:
-        model = get_face_app()
-
-        if not _download_image(
-            image_url,
-            temp_image_path
-        ):
-            return {
-                "status": "failed",
-                "message": "Could not download image"
-            }
-
-        frame = cv2.imread(temp_image_path)
-
-        if frame is None:
-            return {
-                "status": "failed",
-                "message": "Could not read image"
-            }
-
+def start_live_recognition(camera_source=0):
+    print("loading embedding from database")
+    database_rows = get_all_employee_embeddings()
+    
+    known_embeddings = {}
+    
+    for row in database_rows:
+        employee_id = row[0]
+        embedding = np.array(row[1])
+        
+        known_embeddings[employee_id] = embedding
+        
+    print("starting video capture")
+    print(f"loaded {len(known_embeddings)} employee embeddings from database")
+    
+    model = get_face_app()
+    
+    video = cv2.VideoCapture(camera_source)
+    
+    if not video.isOpened():
+        print("Could not open video source")
+        return
+    
+    frame_count = 0
+    
+    last_seen = {}
+    
+    while True:
+        ret, frame = video.read()
+        
+        if not ret:
+            print("Could not read frame from video source")
+            break
+        
+        frame_count += 1
+        
+        if frame_count % FRAME_SKIP != 0:
+            continue
+        
         faces = model.get(frame)
-
-        if len(faces) == 0:
-            return {
-                "status": "failed",
-                "message": "No face detected"
-            }
-
-        face = max(
-            faces,
-            key=lambda f:
-            (f.bbox[2] - f.bbox[0]) *
-            (f.bbox[3] - f.bbox[1])
-        )
-
-        current_embedding = face.normed_embedding
-
-        database_embeddings = get_all_employee_embeddings()
-
-        best_match_employee = None
-        best_similarity = -1
-
-        for row in database_embeddings:
-            employee_id = row[0]
-            stored_embedding = np.array(row[1])
-
-            similarity = np.dot(
-                current_embedding,
-                stored_embedding
-            )
-
-            if similarity > best_similarity:
-                best_similarity = similarity
-                best_match_employee = employee_id
-
-        if best_similarity < MATCH_THRESHOLD:
-            return {
-                "status": "success",
-                "matched": False,
-                "similarity": float(best_similarity)
-            }
-
-        return {
-            "status": "success",
-            "matched": True,
-            "employeeId": best_match_employee,
-            "similarity": float(best_similarity)
-        }
-
-    except Exception as error:
-        return {
-            "status": "failed",
-            "message": str(error)
-        }
-
-    finally:
-        if os.path.exists(temp_image_path):
-            os.remove(temp_image_path)
+        
+        for face in faces:
+            embedding = face.normed_embedding
             
+            best_match_id = None
+            best_match_score = float("inf")
+            
+            for employee_id, stored_embedding in known_embeddings.items():
+                distance = np.linalg.norm(embedding - stored_embedding)
+                
+                if distance < best_match_score:
+                    best_match_score = distance
+                    best_match_id = employee_id
+            
+            if best_match_score < MATCH_THRESHOLD:
+                
+                if best_match_id in last_seen and (cv2.getTickCount() - last_seen[best_match_id]) / cv2.getTickFrequency() > 1:
+                    print(f"Employee {best_match_id} seen again with score {best_match_score}")
+                    continue
+                
+                
+                last_seen[best_match_id] = cv2.getTickCount()
+                
+                print(f"Recognized employee {best_match_id} with score {best_match_score}")
+                
+                x1, y1, x2, y2 = map(int, face.bbox)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, f"{best_match_id} ({best_match_score:.2f})", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                
+        cv2.imshow("Live Recognition", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        
+        # Remove employees not seen for a while
+        current_time = cv2.getTickCount()
+        to_remove = []
+        
+        for employee_id, last_seen_time in last_seen.items():
+            if (current_time - last_seen_time) / cv2.getTickFrequency() > 5:  # 5 seconds timeout
+                to_remove.append(employee_id)
+        
+        for employee_id in to_remove:
+            del last_seen[employee_id]
