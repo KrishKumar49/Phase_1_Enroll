@@ -14,20 +14,25 @@ MATCH_THRESHOLD = 0.50
 FRAME_SKIP = 5
 
 
+def _load_known_embeddings():
+    database_rows = get_all_employee_embeddings()
+
+    known_embeddings = {}
+
+    for employee_id, embedding in database_rows:
+        employee_embeddings = known_embeddings.setdefault(employee_id, [])
+        employee_embeddings.append(np.array(embedding))
+
+    return known_embeddings
+
+
 def start_live_recognition(camera_source=0):
     print("loading embedding from database")
-    database_rows = get_all_employee_embeddings()
-    
-    known_embeddings = {}
-    
-    for row in database_rows:
-        employee_id = row[0]
-        embedding = np.array(row[1])
-        
-        known_embeddings[employee_id] = embedding
-        
+    known_embeddings = _load_known_embeddings()
+
     print("starting video capture")
-    print(f"loaded {len(known_embeddings)} employee embeddings from database")
+    total_embeddings = sum(len(employee_embeddings) for employee_embeddings in known_embeddings.values())
+    print(f"loaded {len(known_embeddings)} employees with {total_embeddings} embeddings from database")
     
     model = get_face_app()
     
@@ -59,18 +64,19 @@ def start_live_recognition(camera_source=0):
             embedding = face.normed_embedding
             
             best_match_id = None
-            best_match_score = float("inf")
+            best_match_score = -1.0
             
-            for employee_id, stored_embedding in known_embeddings.items():
-                distance = np.linalg.norm(embedding - stored_embedding)
-                
-                if distance < best_match_score:
-                    best_match_score = distance
-                    best_match_id = employee_id
+            for employee_id, employee_embeddings in known_embeddings.items():
+                for stored_embedding in employee_embeddings:
+                    similarity = np.dot(embedding, stored_embedding)
+
+                    if similarity > best_match_score:
+                        best_match_score = similarity
+                        best_match_id = employee_id
             
-            if best_match_score < MATCH_THRESHOLD:
+            if best_match_score > MATCH_THRESHOLD:
                 
-                if best_match_id in last_seen and (cv2.getTickCount() - last_seen[best_match_id]) / cv2.getTickFrequency() > 1:
+                if best_match_id in last_seen and (cv2.getTickCount() - last_seen[best_match_id]) / cv2.getTickFrequency() < 1:
                     print(f"Employee {best_match_id} seen again with score {best_match_score}")
                     continue
                 
@@ -97,3 +103,6 @@ def start_live_recognition(camera_source=0):
         
         for employee_id in to_remove:
             del last_seen[employee_id]
+            
+    video.release()
+    cv2.destroyAllWindows()
