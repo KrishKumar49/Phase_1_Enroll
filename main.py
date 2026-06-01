@@ -2,9 +2,22 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 from enroll import enroll_employee
-from recognize import recognize_employee
+from recognize import recognize_face
+
+from fastapi import UploadFile, File
+import numpy as np
+import cv2
+
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class EnrollRequest(BaseModel):
     employeeId: str
@@ -32,7 +45,24 @@ def enroll(data: EnrollRequest):
     return result
 
 @app.post("/recognize")
-def recognize(
-    image_url: str
+async def recognize(
+    file: UploadFile = File(...)
 ):
-    return recognize_employee(image_url)
+
+    image_bytes = await file.read()
+
+    np_arr = np.frombuffer(
+        image_bytes,
+        np.uint8
+    )
+
+    frame = cv2.imdecode(
+        np_arr,
+        cv2.IMREAD_COLOR
+    )
+
+    results = recognize_face(frame)
+
+    return {
+        "results": results
+    }

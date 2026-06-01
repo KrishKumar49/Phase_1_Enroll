@@ -1,3 +1,4 @@
 from recognize import start_live_recognition
 
-start_live_recognition(0)
+if __name__ == "__main__":
+    start_live_recognition(0)

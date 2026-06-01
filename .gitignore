@@ -6,3 +6,6 @@ faces/
 embeddings/
 .env
 insightface_models/
+test_live.py
+backup.dump
+*.pyc
