@@ -68,6 +68,7 @@ def start_live_recognition(camera_source=0):
             
             for employee_id, employee_embeddings in known_embeddings.items():
                 for stored_embedding in employee_embeddings:
+                    # i think we have to convert stored_embedding to numpy array here as they are in strings
                     similarity = np.dot(embedding, stored_embedding)
 
                     if similarity > best_match_score:
