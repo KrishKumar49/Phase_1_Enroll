@@ -1,4 +1,5 @@
 import argparse
+from collections import Counter, deque
 import cv2
 import numpy as np
 from fast_alpr import ALPR
@@ -9,12 +10,12 @@ except Exception:
 
 
 FRAME_SKIP_DEFAULT = 5
+alpr = ALPR()
+CONFIDENCE_THRESHOLD = 0.45
+VOTING_WINDOW_SIZE = 10
 
 
 def start_live_plate_recognition(source=0, frame_skip=FRAME_SKIP_DEFAULT, max_frames=None, save_annotated_every=0, show_window=True):
-    
-    alpr = ALPR()
-
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():
         print(f"Error: Could not open video source {source}")
@@ -23,6 +24,35 @@ def start_live_plate_recognition(source=0, frame_skip=FRAME_SKIP_DEFAULT, max_fr
     print(f"Processing source: {source}")
     frame_count = 0
     processed = 0
+    plate_votes = Counter()
+    plate_window = deque()
+
+    def _normalize_plate(text):
+        if not text:
+            return ''
+        return ''.join(ch for ch in text.strip().upper() if ch.isalnum())
+
+    def _confidence_value(conf):
+        try:
+            if isinstance(conf, (list, tuple, np.ndarray)):
+                return float(np.mean(conf))
+            return float(conf)
+        except Exception:
+            return 0.0
+
+    def _update_votes(plate_number):
+        plate_window.append(plate_number)
+        plate_votes[plate_number] += 1
+
+        if len(plate_window) > VOTING_WINDOW_SIZE:
+            old_plate = plate_window.popleft()
+            plate_votes[old_plate] -= 1
+            if plate_votes[old_plate] <= 0:
+                del plate_votes[old_plate]
+
+        if plate_votes:
+            return plate_votes.most_common(1)[0][0]
+        return None
 
     while True:
         ret, frame = cap.read()
@@ -50,7 +80,15 @@ def start_live_plate_recognition(source=0, frame_skip=FRAME_SKIP_DEFAULT, max_fr
                 ocr = getattr(det, 'ocr', None)
                 txt = getattr(ocr, 'text', '') if ocr is not None else ''
                 conf = getattr(ocr, 'confidence', 0) if ocr is not None else 0
-                print(f"  - Text: {txt}, Confidence: {conf}")
+                conf_value = _confidence_value(conf)
+                plate_number = _normalize_plate(txt)
+
+                if conf_value < CONFIDENCE_THRESHOLD or not plate_number:
+                    print(f"  - Skipped low-confidence plate: {txt}, Confidence: {conf_value:.4f}")
+                    continue
+
+                dominant_plate = _update_votes(plate_number)
+                print(f"  - Text: {plate_number}, Confidence: {conf_value:.4f}, Majority: {dominant_plate}")
 
             try:
                 annotated = alpr.draw_predictions(frame.copy())
@@ -114,19 +152,28 @@ def start_live_plate_recognition(source=0, frame_skip=FRAME_SKIP_DEFAULT, max_fr
             bbox = _extract_bbox(det)
             ocr = getattr(det, 'ocr', None)
             txt = getattr(ocr, 'text', '') if ocr is not None else ''
+            conf = getattr(ocr, 'confidence', 0) if ocr is not None else 0
+            conf_value = _confidence_value(conf)
+            plate_number = _normalize_plate(txt)
+
+            if conf_value < CONFIDENCE_THRESHOLD or not plate_number:
+                continue
+
             if bbox is not None:
                 x1, y1, x2, y2 = bbox
                 h, w = annotated.shape[:2]
                 x1, y1 = max(0, x1), max(0, y1)
                 x2, y2 = min(w - 1, x2), min(h - 1, y2)
                 cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                text_draw = txt if txt else '---'
+                text_draw = plate_number if plate_number else '---'
                 cv2.putText(annotated, text_draw, (x1, max(15, y1 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
         if annotated is None:
             annotated = frame
 
         if save_annotated_every and (processed % save_annotated_every == 0):
+            # Store either the cropped image of the most confident plate or the full frame here,
+            # depending on what the larger service needs.
             out_name = f"frame_{processed}_annotated.jpg"
             cv2.imwrite(out_name, annotated)
             print(f"Saved annotated frame: {out_name}")
@@ -144,6 +191,12 @@ def start_live_plate_recognition(source=0, frame_skip=FRAME_SKIP_DEFAULT, max_fr
     cap.release()
     if show_window:
         cv2.destroyAllWindows()
+
+    if plate_votes:
+        final_plate = plate_votes.most_common(1)[0][0]
+        print(f"Final majority plate: {final_plate}")
+    else:
+        print("Final majority plate: none")
 
 
 if __name__ == '__main__':
