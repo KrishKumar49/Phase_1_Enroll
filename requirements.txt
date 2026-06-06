@@ -8,3 +8,15 @@ onnxruntime
 python-multipart
 psycopg2-binary
 python-dotenv
+yacs
+torch
+torchvision
+ultralytics
+termcolor
+scikit-learn
+tensorboard
+tabulate
+gdown
+prettytable
+easydict
+faiss-cpu
