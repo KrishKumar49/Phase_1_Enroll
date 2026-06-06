@@ -6,3 +6,5 @@ faces/
 embeddings/
 .env
 insightface_models/
+vehicleid_bot_R50-ibn.pth
+*.pth
