@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from enroll import enroll_employee
 from recognize import recognize_employee
+from vehicle_entry import start_live_vehicle_entry, VehicleEntryRequest
 
 app = FastAPI()
 
