@@ -36,3 +36,22 @@ def recognize(
     image_url: str
 ):
     return recognize_employee(image_url)
+
+@app.post("/vehicle-entry")
+def vehicle_entry(data: VehicleEntryRequest):
+
+    start_live_vehicle_entry(
+        source=data.source,
+        frame_skip=5,
+        max_frames=100,
+        show_window=False,
+        persist=True,
+        employee_id=data.employeeId,
+        visit_id=data.visitId,
+        camera_id=data.cameraId,
+    )
+    
+    return {
+        "status": "success",
+        "message": "Vehicle processing completed"
+    }
