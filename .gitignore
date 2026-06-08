@@ -8,3 +8,5 @@ embeddings/
 insightface_models/
 vehicleid_bot_R50-ibn.pth
 *.pth
+*.pt
+fast-reid/
