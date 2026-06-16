@@ -48,6 +48,14 @@ def save_employee_embedding(
         )
     )
 
+    cursor.execute(
+    """
+    DELETE FROM employee_embeddings
+    WHERE employee_id = %s
+    """,
+    (employee_id,)
+    )
+    
     for embedding in all_embeddings:
         embedding_list = embedding.tolist()
 
