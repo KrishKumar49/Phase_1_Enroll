@@ -46,3 +46,7 @@ def recognize(
     image_url: str
 ):
     return recognize_employee(image_url)
+
+@app.delete("/employee/{employee_id}")
+def remove_employee(employee_id: str):
+    return delete_employee(employee_id)
