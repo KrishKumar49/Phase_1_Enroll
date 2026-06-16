@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from enroll import enroll_employee
 from recognize import recognize_employee
+from database import delete_employee
 
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
