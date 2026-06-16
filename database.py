@@ -77,7 +77,37 @@ def save_employee_embedding(
 
     cursor.close()
     conn.close()
-    
+
+    def delete_employee(employee_id):
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        DELETE FROM employee_embeddings
+        WHERE employee_id = %s
+        """,
+        (employee_id,)
+    )
+
+    cursor.execute(
+        """
+        DELETE FROM employees
+        WHERE employee_id = %s
+        """,
+        (employee_id,)
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return {
+        "status": "success",
+        "employeeId": employee_id
+    }
     
 def get_all_employee_embeddings():
     conn = get_db_connection()
